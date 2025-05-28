@@ -41,13 +41,7 @@ prompt = PromptTemplate(
             Use the provided context from the video transcript and the conversation history to answer the question.
             
             If the context is insufficient to answer the question, reply that you don't have enough information from the video.
-            Be conversational and refer to previous parts of our conversation when relevant.
-
-            Reply to normal conversational phrases like Hi , thank you , cool etc in the natural way don't rely on transcript 
-            inforamtion while replying these kind of questions.
-
-            For all other queries related to transcript video trnascript answer strictly based on transcript context and past 
-            chats.
+            Be conversational and refer to previous parts of our conversation when relevant.         
             
             Context from video transcript:
             {context}

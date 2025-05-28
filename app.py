@@ -206,7 +206,7 @@ else:
         if st.button("📝 Summarize Video", use_container_width=True):
             with st.spinner("📝 Generating summary..."):
                 try:
-                    summary = st.session_state.chat_bot.chat("Please provide a comprehensive summary of this video.")
+                    summary = st.session_state.chat_bot.chat("Please provide a comprehensive summary of this video using the transcript of the video")
                     st.session_state.chat_history.append(("Summarize Video", summary))
                     st.rerun()
                 except Exception as e:
@@ -216,7 +216,7 @@ else:
         if st.button("🔑 Key Points", use_container_width=True):
             with st.spinner("🔑 Extracting key points..."):
                 try:
-                    key_points = st.session_state.chat_bot.chat("What are the main key points or takeaways from this video?")
+                    key_points = st.session_state.chat_bot.chat("What are the main key points or takeaways from this video? check transcript for your refrence")
                     st.session_state.chat_history.append(("Key Points", key_points))
                     st.rerun()
                 except Exception as e:
