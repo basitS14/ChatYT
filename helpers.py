@@ -15,16 +15,25 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain.retrievers.multi_query import MultiQueryRetriever
 from langchain.retrievers import ContextualCompressionRetriever
 from langchain.retrievers.document_compressors import LLMChainExtractor
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_google_genai import ChatGoogleGenerativeAI , GoogleGenerativeAIEmbeddings
+from langchain_huggingface import ChatHuggingFace , HuggingFaceEndpoint , HuggingFaceEndpointEmbeddings
 from langchain.memory import ConversationBufferWindowMemory
 from langchain.chains import ConversationalRetrievalChain
 from dotenv import load_dotenv
 load_dotenv()
 
+# from google.oauth2 import service_account
+
+# credentials = service_account.Credentials.from_service_account_file(
+#     'service-account.json',
+#     scopes=['https://www.googleapis.com/auth/generative-language']  # Required scope
+# )
+
 embedd_model = OllamaEmbeddings(model="llama3.2:latest")
+# embedd_model = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-exp-03-07"  , google_api_key=os.getenv("GEMINI_API_KEY"))
 llm = ChatOllama(model="llama3.2:latest")
-# llm = ChatGoogleGenerativeAI(model="gemini-2.5-pro")
-parser = StrOutputParser()
+# llm = ChatGoogleGenerativeAI(model="gemini-1.5-pro-latest" )
+
 
 prompt = PromptTemplate(
     template="""
@@ -33,6 +42,12 @@ prompt = PromptTemplate(
             
             If the context is insufficient to answer the question, reply that you don't have enough information from the video.
             Be conversational and refer to previous parts of our conversation when relevant.
+
+            Reply to normal conversational phrases like Hi , thank you , cool etc in the natural way don't rely on transcript 
+            inforamtion while replying these kind of questions.
+
+            For all other queries related to transcript video trnascript answer strictly based on transcript context and past 
+            chats.
             
             Context from video transcript:
             {context}
