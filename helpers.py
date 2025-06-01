@@ -19,38 +19,33 @@ from langchain_google_genai import ChatGoogleGenerativeAI , GoogleGenerativeAIEm
 from langchain_huggingface import ChatHuggingFace , HuggingFaceEndpoint , HuggingFaceEndpointEmbeddings
 from langchain.memory import ConversationBufferWindowMemory
 from langchain.chains import ConversationalRetrievalChain
+from langchain_groq import ChatGroq
 from dotenv import load_dotenv
 load_dotenv()
 
-# from google.oauth2 import service_account
-
-# credentials = service_account.Credentials.from_service_account_file(
-#     'service-account.json',
-#     scopes=['https://www.googleapis.com/auth/generative-language']  # Required scope
-# )
-
-embedd_model = OllamaEmbeddings(model="llama3.2:latest")
-# embedd_model = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-exp-03-07"  , google_api_key=os.getenv("GEMINI_API_KEY"))
+embedd_model = OllamaEmbeddings(model="nomic-embed-text:latest")
 llm = ChatOllama(model="llama3.2:latest")
-# llm = ChatGoogleGenerativeAI(model="gemini-1.5-pro-latest" )
+
 
 
 prompt = PromptTemplate(
     template="""
-            You are a helpful assistant that can answer questions about YouTube videos based on their transcripts.
-            Use the provided context from the video transcript and the conversation history to answer the question.
-            
-            If the context is insufficient to answer the question, reply that you don't have enough information from the video.
-            Be conversational and refer to previous parts of our conversation when relevant.         
-            
-            Context from video transcript:
-            {context}
-            
-            Chat History:
-            {chat_history}
-            
-            Human: {question}
-            Assistant:""",
+You are a helpful and conversational assistant that answers questions about YouTube videos based on their transcripts.
+Use the provided context from the video transcript and the conversation history to answer the user's question accurately.
+
+If the user's message is general (like greetings, expressions of thanks, or small talk), respond politely and naturally, 
+even if the context from the video is not relevant. Maintain a friendly tone throughout.
+
+If the user asks a specific question related to the video and the context is insufficient, say that you don't have enough information from the video.
+
+Context from video transcript:
+{context}
+
+Chat History:
+{chat_history}
+
+Human: {question}
+Assistant:""",
     input_variables=['context', 'chat_history', 'question']
 )
 
@@ -74,13 +69,29 @@ def get_transcript(link):
 
 def create_chunks(transcript):
     num_words = len(transcript.split(" "))
-    if num_words >= 5000:
-        splitter = RecursiveCharacterTextSplitter(chunk_size=1000 , chunk_overlap = 150)
+    
+    if num_words >= 10000:
+        # For very long videos, use larger chunks
+        splitter = RecursiveCharacterTextSplitter(
+            chunk_size=2000, 
+            chunk_overlap=200,
+            separators=["\n\n", "\n", ". ", "! ", "? ", " "]
+        )
+    elif num_words >= 5000:
+        splitter = RecursiveCharacterTextSplitter(
+            chunk_size=1500, 
+            chunk_overlap=200,
+            separators=["\n\n", "\n", ". ", "! ", "? ", " "]
+        )
     else:
-        splitter = SemanticChunker(embeddings=embedd_model)
+        splitter = RecursiveCharacterTextSplitter(
+            chunk_size=800, 
+            chunk_overlap=100,
+            separators=["\n\n", "\n", ". ", "! ", "? ", " "]
+        )
+    
     chunks = splitter.create_documents([transcript])
-    print(f"{len(chunks)} chunks are created...")
-
+    print(f"{len(chunks)} chunks created")
     return chunks
 
 
@@ -105,23 +116,23 @@ def create_vector_store(chunks , link):
 
 
 def document_retriever(vector_store):
-    # retriever = vector_store.as_retriever(search_type="MMR" , search_kwargs={'k': 8})
-    retriever_from_llm =MultiQueryRetriever.from_llm(
-        retriever=vector_store.as_retriever(search_type="mmr"), llm=llm
-        )
+    retriever = vector_store.as_retriever(search_type="mmr" , search_kwargs={'k': 8 , 'fetch_k':20 , 'lambda_mult':0.7})
+    # retriever_from_llm =MultiQueryRetriever.from_llm(
+    #     retriever=vector_store.as_retriever(search_type="mmr" ,search_kwargs={'k': 5} ), llm=llm 
+    # )
     # compressor = LLMChainExtractor.from_llm(llm)
     # compression_retriever = ContextualCompressionRetriever(
     # base_compressor=compressor, base_retriever=retriever_from_llm
     # )
     print("Retrieving Documents...")
-    return retriever_from_llm
+    return retriever
 
 def format_docs(retrived_docs):
     doc_context = "\n\n".join(doc.page_content for doc in retrived_docs)
     return doc_context
 
 class ConversationalYouTubeChat:
-    def __init__(self, retriever, memory_window=5):
+    def __init__(self, retriever, memory_window=3):
         self.retriever = retriever
         self.memory = ConversationBufferWindowMemory(
             k=memory_window,
